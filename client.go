@@ -3,6 +3,7 @@ package main
 import (
     "github.com/gorilla/websocket"
     r "gopkg.in/gorethink/gorethink.v3"
+    "fmt"
 )
 
 type FindHandler func(string) (Handler, bool)
@@ -13,10 +14,17 @@ type Message struct {
 }
 
 type Client struct {
-	send        chan Message
-    socket      *websocket.Conn
-    findHandler FindHandler
-    session     *r.Session
+	send         chan Message
+    socket       *websocket.Conn
+    findHandler  FindHandler
+    session      *r.Session
+    stopChannels map[int]chan bool
+}
+
+func (client *Client) NewStopChannel(stopKey int) chan bool {
+    stop := make(chan bool)
+    client.stopChannels[stopKey] = stop
+    return stop
 }
 
 func (client *Client) Read() {
@@ -41,11 +49,21 @@ func (client *Client) Write() {
     client.socket.Close()
 }
 
+func (client *Client) Close() {
+    fmt.Println("Closing all subscription channels")
+    for _, ch := range client.stopChannels {
+        ch <- true
+    }
+    fmt.Println("Closing send channel")
+    close(client.send)
+}
+
 func NewClient(socket *websocket.Conn, findHandler FindHandler, session *r.Session) *Client {
     return &Client {
         send: make(chan Message),
         socket: socket,
         findHandler: findHandler,
         session: session,
+        stopChannels: make(map[int]chan bool),
     }
 }
