@@ -14,7 +14,7 @@ type Message struct {
 }
 
 type Client struct {
-	send         chan Message
+    send         chan Message
     socket       *websocket.Conn
     findHandler  FindHandler
     session      *r.Session
@@ -22,9 +22,17 @@ type Client struct {
 }
 
 func (client *Client) NewStopChannel(stopKey int) chan bool {
+    client.StopForKey(stopKey)
     stop := make(chan bool)
     client.stopChannels[stopKey] = stop
     return stop
+}
+
+func (client *Client) StopForKey(key int) {
+    if ch, found := client.stopChannels[key]; found {
+        ch <- true
+        delete(client.stopChannels, key)
+    }
 }
 
 func (client *Client) Read() {

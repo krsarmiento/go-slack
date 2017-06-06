@@ -30,7 +30,9 @@ func main() {
     router := NewRouter(session)
     router.Handle("channel add", addChannel)
     router.Handle("channel subscribe", subscribeChannel)
-
+    router.Handle("channel unsubscribe", unsubscribeChannel)
+    router.Handle("user edit", userEdit)
+    router.Handle("user subscribe", subscribeUser)
     http.Handle("/", router)
     http.ListenAndServe(":4000", nil)
 }
