@@ -12,8 +12,8 @@ type Channel struct {
 }
 
 type User struct {
-    Id string `gorethink:"id,omitempty"`
-    Name string `gorethink:"name"`
+    Id string `json:"id" orethink:"id,omitempty"`
+    Name string `json:"name" gorethink:"name"`
 }
 
 

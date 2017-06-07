@@ -72,17 +72,20 @@ func userEdit(client *Client, data interface{}) {
         client.send <- Message{"error", err.Error()}
         return
     }
-    response, err := r.Table("user").
-      Insert(user).
-      RunWrite(client.session)
-    if err != nil {
-        client.send <- Message{"error", err.Error()}
-    }
-    user.Id = response.GeneratedKeys[0]
-    client.send <- Message{"user edit", user}
+    go func() {
+        err := r.Table("user").
+          Get(user.Id).
+          Update(user).
+          Exec(client.session)
+        if err != nil {
+            client.send <- Message{"error", err.Error()}
+        }
+        client.send <- Message{"user edit", user}
+    }()
 }
 
 func subscribeUser(client *Client, data interface{}) {
+    createAnonymousUser(client)
     stop := client.NewStopChannel(UserStop)
     result := make(chan r.ChangeResponse)
     cursor, err := r.Table("user").
@@ -113,6 +116,17 @@ func subscribeUser(client *Client, data interface{}) {
     }()
 }
 
+func createAnonymousUser(client *Client) {
+    user := User{"", "Anonymous"}
+    response, err := r.Table("user").
+      Insert(user).
+      RunWrite(client.session)
+    if err != nil {
+        client.send <- Message{"error", err.Error()}
+    }
+    user.Id = response.GeneratedKeys[0]
+    client.send <- Message{"user edit", user}
+}
 
 
 
