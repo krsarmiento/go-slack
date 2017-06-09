@@ -19,6 +19,7 @@ type Client struct {
     findHandler  FindHandler
     session      *r.Session
     stopChannels map[int]chan bool
+    userId       string
 }
 
 func (client *Client) NewStopChannel(stopKey int) chan bool {
@@ -64,6 +65,11 @@ func (client *Client) Close() {
     }
     fmt.Println("Closing send channel")
     close(client.send)
+    fmt.Println("[User Leaving] " + client.userId)
+    _, _ = r.Table("user").
+             Get(client.userId).
+             Delete().
+             Run(client.session)
 }
 
 func NewClient(socket *websocket.Conn, findHandler FindHandler, session *r.Session) *Client {
@@ -73,5 +79,6 @@ func NewClient(socket *websocket.Conn, findHandler FindHandler, session *r.Sessi
         findHandler: findHandler,
         session: session,
         stopChannels: make(map[int]chan bool),
+        userId: "",
     }
 }
