@@ -111,6 +111,12 @@ func subscribeUser(client *Client, data interface{}) {
                     if change.NewValue != nil && change.OldValue == nil {
                         client.send <- Message{"user add", change.NewValue}
                         fmt.Println("[User] Add")
+                    } else if change.NewValue == nil && change.OldValue != nil {
+                        client.send <- Message{"user remove", change.OldValue}
+                        fmt.Println("[User] Remove")
+                    } else if change.NewValue != nil && change.OldValue != nil {
+                        client.send <- Message{"user edit", change.NewValue}
+                        fmt.Println("[User] Edit")
                     }
             }
         }
@@ -124,13 +130,13 @@ func unsubscribeUser(client *Client, data interface{}) {
 func addMessage(client *Client, data interface{}) {
     var message MessageChannel
     err := mapstructure.Decode(data, &message)
-    message.CreatedAt = time.Now().UTC().Format(time.RFC3339)
-    message.Author = getAuthorName(message.Author, client)
     if err != nil {
         client.send <- Message{"error", err.Error()}
         return
     }
     go func() {
+        message.CreatedAt = time.Now()
+        message.Author = getAuthorName(message.Author, client)
         err := r.Table("message").
           Insert(message).
           Exec(client.session)
@@ -145,10 +151,28 @@ func subscribeMessage(client *Client, data interface{}) {
     err := mapstructure.Decode(data, &subscriptionData)
     stop := client.NewStopChannel(MessageStop)
     result := make(chan r.ChangeResponse)
-    cursor, err := r.Table("message").
-        GetAllByIndex("channelId", subscriptionData["channelId"]).
-        Changes(r.ChangesOpts{IncludeInitial: true}).
+
+    query := r.Table("message").
+        OrderBy(r.OrderByOpts{Index: r.Asc("createdAt")}).
+        Filter(r.Row.Field("channelId").Eq(subscriptionData["channelId"]))
+
+    response, err := query.Run(client.session)
+    var messages []MessageChannel
+    err = response.All(&messages)
+    if err != nil {
+        client.send <- Message{"error", err.Error()}
+        return
+    }
+
+    for _, message := range messages {
+        client.send <- Message{"message add", message}
+        fmt.Println("[Message] Add")
+    }
+
+    cursor, err := query.
+        Changes(r.ChangesOpts{IncludeInitial: false}).
         Run(client.session)
+
     if err != nil {
         client.send <- Message{"error", err.Error()}
         return

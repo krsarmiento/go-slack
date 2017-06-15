@@ -4,6 +4,7 @@ import (
 	r "gopkg.in/gorethink/gorethink.v3"
 	"log"
 	"net/http"
+	"time"
 )
 
 type Channel struct {
@@ -17,11 +18,11 @@ type User struct {
 }
 
 type MessageChannel struct {
-	Id        string `json:"id" gorethink:"id,omitempty"`
-	Author    string `json:"author" gorethink:"author"`
-	CreatedAt string `json:"createdAt" gorethink:"createdAt"`
-	Body      string `json:"body" gorethink:"body"`
-	ChannelId string `json:"channelId" gorethink:"channelId"`
+	Id        string    `json:"id" gorethink:"id,omitempty"`
+	Author    string    `json:"author" gorethink:"author"`
+	CreatedAt time.Time `json:"createdAt" gorethink:"createdAt"`
+	Body      string    `json:"body" gorethink:"body"`
+	ChannelId string    `json:"channelId" gorethink:"channelId"`
 }
 
 func main() {
@@ -42,7 +43,7 @@ func main() {
 	router.Handle("user subscribe", subscribeUser)
 	router.Handle("message add", addMessage)
 	router.Handle("message subscribe", subscribeMessage)
-	router.Handle("message unsubscribe", subscribeMessage)
+	router.Handle("message unsubscribe", unsubscribeMessage)
 	http.Handle("/", router)
 	http.ListenAndServe(":4000", nil)
 }
